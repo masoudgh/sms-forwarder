@@ -32,7 +32,7 @@ class SmsReceiver : BroadcastReceiver() {
 
                             // پاکسازی و مقایسه امن شماره‌ها (حذف فاصله‌ها و پلاس‌ها برای تطابق دقیق)
                             if (isNumberMatch(sender, savedSourceNumber)) {
-                                forwardSms(targetNumber, "پیامک از: $sender\n\n$messageBody")
+                                forwardSms(targetNumber, "$messageBody")
                             }
                         }
                     }
