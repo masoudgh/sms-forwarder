@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.Intent
 import android.telephony.SmsManager
 import android.telephony.SmsMessage
-import android.util.Log
 
 class SmsReceiver : BroadcastReceiver() {
 
@@ -30,8 +29,8 @@ class SmsReceiver : BroadcastReceiver() {
                             val sender = sms.originatingAddress ?: ""
                             val messageBody = sms.messageBody
 
-                            // پاکسازی و مقایسه امن شماره‌ها (حذف فاصله‌ها و پلاس‌ها برای تطابق دقیق)
-                            if (isNumberMatch(sender, savedSourceNumber)) {
+                            // بررسی تطابق برای شماره‌های معمولی و سرشماره‌های خدماتی کوتاه
+                            if (isServiceOrNumberMatch(sender, savedSourceNumber)) {
                                 forwardSms(targetNumber, "$messageBody")
                             }
                         }
@@ -43,16 +42,22 @@ class SmsReceiver : BroadcastReceiver() {
         }
     }
 
-    private fun isNumberMatch(sender: String, target: String): Boolean {
-        // حذف کاراکترهای اضافی مثل + یا فاصله
-        val cleanSender = sender.replace("+98", "0").replace(Regex("[^0-9]"), "")
-        val cleanTarget = target.replace("+98", "0").replace(Regex("[^0-9]"), "")
+    private fun isServiceOrNumberMatch(sender: String, target: String): Boolean {
+        // پاکسازی کاراکترهای اضافی
+        val cleanSender = sender.replace("+98", "0").replace(Regex("[^0-9a-zA-Z]"), "").lowercase()
+        val cleanTarget = target.replace("+98", "0").replace(Regex("[^0-9a-zA-Z]"), "").lowercase()
 
-        // تطابق 9 رقم انتهای شماره (برای پوشش اختلاف کدهای شهری و صفر اول)
-        if (cleanSender.length >= 9 && cleanTarget.length >= 9) {
-            return cleanSender.takeLast(9) == cleanTarget.takeLast(9)
+        // اگر سرشماره خدماتی یا کوتاه است (مثل 3000940)، بررسی می‌کنیم که آیا فرستنده شامل این شماره است یا برعکس
+        if (cleanTarget.length <= 8 || cleanSender.length <= 8) {
+            return cleanSender.contains(cleanTarget) || cleanTarget.contains(cleanSender)
         }
-        return cleanSender == cleanTarget
+
+        // برای شماره‌های معمولی موبایل (9 رقم انتهای شماره)
+        return if (cleanSender.length >= 9 && cleanTarget.length >= 9) {
+            cleanSender.takeLast(9) == cleanTarget.takeLast(9)
+        } else {
+            cleanSender == cleanTarget
+        }
     }
 
     private fun forwardSms(targetNumber: String, message: String) {
